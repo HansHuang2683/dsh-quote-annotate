@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.0.3';
+    const VERSION = '1.0.4';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -231,13 +231,30 @@ window.__ModuleLoader__.load({
      * 文案
      * ================================================================== */
     function refreshLocale() {
+      let id = '';
       try {
-        const snapshot = locale && typeof locale.getLocale === 'function' ? locale.getLocale() : null;
-        const id = snapshot && typeof snapshot.active === 'string' ? snapshot.active : '';
-        activeLocale = id.toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+        if (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) {
+          id = String(document.documentElement.lang);
+        }
       } catch (error) {
-        activeLocale = 'zh';
+        id = '';
       }
+      if (!id) {
+        try {
+          const snapshot = locale && typeof locale.getLocale === 'function' ? locale.getLocale() : null;
+          if (snapshot && typeof snapshot.active === 'string') id = snapshot.active;
+        } catch (error) {
+          id = '';
+        }
+      }
+      if (!id) {
+        try {
+          id = (typeof navigator !== 'undefined' && navigator.language) || '';
+        } catch (error) {
+          id = '';
+        }
+      }
+      activeLocale = String(id).toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
     }
 
     function tr(key, params) {
@@ -884,8 +901,16 @@ window.__ModuleLoader__.load({
           const annotation = findAnnotation(detail.id);
           if (annotation) openEditor(annotation, detail.rect);
         };
+        const onSession = () => {
+          setEditor(null);
+          setSelection(null);
+        };
         window.addEventListener('dqa:edit', handler);
-        return () => window.removeEventListener('dqa:edit', handler);
+        window.addEventListener('dqa:session', onSession);
+        return () => {
+          window.removeEventListener('dqa:edit', handler);
+          window.removeEventListener('dqa:session', onSession);
+        };
       }, []);
 
       /* ---- 渲染 ---- */
@@ -942,21 +967,36 @@ window.__ModuleLoader__.load({
         const anchorTop = rect.top || 0;
         const anchorBottom = rect.bottom || 0;
         const gap = 12;
-        const maxTop = Math.max(12, window.innerHeight - 260);
+        const POP_H = 240;
+
+        /* 别压到输入框：以输入框卡片顶边为下界，空间不够就翻到选区上方 */
+        let limitBottom = window.innerHeight - 12;
+        try {
+          const card = document.querySelector('[data-composer-card]');
+          if (card) {
+            const cardTop = card.getBoundingClientRect().top;
+            if (cardTop > 80) limitBottom = Math.min(limitBottom, cardTop - 12);
+          }
+        } catch (error) {
+          /* 忽略 */
+        }
+        const maxTop = Math.max(12, limitBottom - POP_H);
         const maxLeft = Math.max(12, window.innerWidth - width - 12);
+        const clampTop = (value) => Math.min(Math.max(12, value), maxTop);
 
         let left;
         let top;
         if (anchorRight + gap + width <= window.innerWidth - 12) {
           left = anchorRight + gap;
-          top = Math.min(Math.max(12, anchorTop), maxTop);
+          top = clampTop(anchorTop);
         } else if (anchorLeft - gap - width >= 12) {
           left = anchorLeft - gap - width;
-          top = Math.min(Math.max(12, anchorTop), maxTop);
+          top = clampTop(anchorTop);
         } else {
           left = Math.min(Math.max(12, anchorLeft), maxLeft);
-          const spaceBelow = window.innerHeight - anchorBottom;
-          top = spaceBelow > 200 ? anchorBottom + gap : Math.max(12, anchorTop - 210);
+          const spaceBelow = limitBottom - anchorBottom;
+          top = spaceBelow > POP_H + gap ? anchorBottom + gap : Math.max(12, anchorTop - POP_H - gap);
+          top = clampTop(top);
         }
 
         children.push(
@@ -1106,6 +1146,22 @@ window.__ModuleLoader__.load({
           if (bridge.actions === actions) bridge.actions = null;
         };
       }, [actions, props.sessionId]);
+
+      /* 切换会话：上一会话的批注不能带到这一会话（更不能跨会话发出去） */
+      const sessionRef = React.useRef(props.sessionId);
+      React.useEffect(() => {
+        if (sessionRef.current === props.sessionId) return;
+        sessionRef.current = props.sessionId;
+        if (store.items.length > 0) {
+          store.items = [];
+          notify();
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('dqa:session'));
+        } catch (error) {
+          /* 忽略 */
+        }
+      }, [props.sessionId]);
 
       /* 空草稿 + 有批注：写一个零宽占位，让原生发送按钮可用（发送时剔除） */
       React.useEffect(() => {
