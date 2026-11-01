@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.1.0';
+    const VERSION = '1.1.1';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -681,8 +681,6 @@ window.__ModuleLoader__.load({
       'padding:10px;border:1px solid var(--dqa-border);border-radius:12px;background:var(--dqa-surface);',
       'box-shadow:var(--dqa-shadow);color:var(--dqa-text);animation:dqa-in .12s ease;',
       'font:400 13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}',
-      '.dqa-pop-quote{margin-bottom:6px;padding:0 2px;color:var(--dqa-text-2);font-size:12px;',
-      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.dqa-pop textarea{display:block;width:100%;box-sizing:border-box;min-height:64px;max-height:180px;resize:vertical;',
       'padding:7px 9px;border-radius:8px;border:1px solid var(--dqa-border);background:var(--dqa-input);',
       'color:var(--dqa-text);font:inherit;outline:none}',
@@ -1035,7 +1033,6 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { key: 'pop', className: 'dqa-pop', 'data-dqa': 'popover', style: { left: left + 'px', top: top + 'px' } },
-            h('div', { className: 'dqa-pop-quote' }, '「' + String((annotation ? annotation.quote : editor.quote) || '').replace(/\s+/g, ' ').slice(0, 80) + '」'),
             h('textarea', {
               autoFocus: true,
               placeholder: tr('placeholder'),
