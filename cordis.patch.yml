@@ -1,0 +1,6 @@
+# Web bundle patch for dsh-quote-annotate.
+# The Host row is inert: it only mounts the package's browser client entry.
+
+- insert:
+    - id: quote-annotate
+      name: "dsh-quote-annotate"

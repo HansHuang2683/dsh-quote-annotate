@@ -1,0 +1,52 @@
+{
+  "name": "dsh-quote-annotate",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DeepSeek Harness plugin: select any passage, annotate it in place, and send the quote + your comment with the message.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "quote",
+    "annotation",
+    "selection"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.1-rc.3"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "license": "MIT",
+  "author": "HansHuang2683",
+  "homepage": "https://github.com/HansHuang2683/dsh-quote-annotate#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HansHuang2683/dsh-quote-annotate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HansHuang2683/dsh-quote-annotate/issues"
+  }
+}

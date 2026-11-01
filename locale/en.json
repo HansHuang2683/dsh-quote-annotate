@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Selection Annotations",
+    "description": "Select any passage in the conversation to annotate it in place: the quote is highlighted with a numbered badge and the composer keeps a single “N annotations” pill. On send, every annotation (quote + your comment) is folded into the message so the model can tell exactly what you mean."
+  }
+}
