@@ -1,6 +1,6 @@
 {
   "name": "dsh-quote-annotate",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "DeepSeek Harness plugin: select any passage, annotate it in place, and send the quote + your comment with the message.",
   "keywords": [

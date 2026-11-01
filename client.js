@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.0.2';
+    const VERSION = '1.0.3';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -933,40 +933,30 @@ window.__ModuleLoader__.load({
         const width = 340;
         const annotation = findAnnotation(editor.id);
 
-        /* 优先把批注框放到正文列的右侧空白区（桌面端右侧留白很大），
-         * 既不会盖住选中的文字，也不会压到输入框和批注条；放不下再退回选区旁边。 */
-        let beside = null;
-        try {
-          const range = annotation ? locateAnnotation(annotation) : null;
-          const el = range ? elementOf(range.startContainer) : null;
-          const row = el ? el.closest(ROW_SELECTOR) : null;
-          const rowRect = row ? row.getBoundingClientRect() : null;
-          const rowRight = rowRect ? rowRect.right : annotation && annotation.rowRight ? annotation.rowRight : 0;
-          const topBase = rowRect ? rowRect.top : rect.top || 0;
-          if (rowRight > 0) {
-            const besideLeft = rowRight + 16;
-            if (besideLeft + width <= window.innerWidth - 12) {
-              beside = {
-                left: besideLeft,
-                top: Math.min(Math.max(12, topBase), Math.max(12, window.innerHeight - 240)),
-              };
-            }
-          }
-        } catch (error) {
-          beside = null;
-        }
+        /* 永远贴着「选区 / 角标」放，不按整行的右边缘定位（整行很宽，会把框甩到很远）：
+         * 1) 选区右侧放得下 → 放右侧（选区在行尾时正好落进正文右侧留白）
+         * 2) 左侧放得下 → 放左侧
+         * 3) 都不行 → 选区下方，再不行就上方 */
+        const anchorLeft = rect.left || 0;
+        const anchorRight = rect.right || anchorLeft + (rect.width || 0);
+        const anchorTop = rect.top || 0;
+        const anchorBottom = rect.bottom || 0;
+        const gap = 12;
+        const maxTop = Math.max(12, window.innerHeight - 260);
+        const maxLeft = Math.max(12, window.innerWidth - width - 12);
 
         let left;
         let top;
-        if (beside) {
-          left = beside.left;
-          top = beside.top;
+        if (anchorRight + gap + width <= window.innerWidth - 12) {
+          left = anchorRight + gap;
+          top = Math.min(Math.max(12, anchorTop), maxTop);
+        } else if (anchorLeft - gap - width >= 12) {
+          left = anchorLeft - gap - width;
+          top = Math.min(Math.max(12, anchorTop), maxTop);
         } else {
-          const centerX = (rect.left || 0) + (rect.width || 0) / 2;
-          left = Math.min(Math.max(12, centerX - width / 2), Math.max(12, window.innerWidth - width - 12));
-          const spaceBelow = window.innerHeight - (rect.bottom || 0);
-          const openBelow = spaceBelow > 190;
-          top = openBelow ? (rect.bottom || 0) + 10 : Math.max(12, (rect.top || 0) - 200);
+          left = Math.min(Math.max(12, anchorLeft), maxLeft);
+          const spaceBelow = window.innerHeight - anchorBottom;
+          top = spaceBelow > 200 ? anchorBottom + gap : Math.max(12, anchorTop - 210);
         }
 
         children.push(
@@ -1018,7 +1008,15 @@ window.__ModuleLoader__.load({
                 event.preventDefault();
                 event.stopPropagation();
                 const annotation = findAnnotation(badge.id);
-                if (annotation) openEditor(annotation, annotation.rect);
+                if (annotation) {
+                  openEditor(annotation, {
+                    left: badge.left - 22,
+                    right: badge.left,
+                    top: badge.top,
+                    bottom: badge.top + 20,
+                    width: 22,
+                  });
+                }
               },
             },
             String(badge.n)
