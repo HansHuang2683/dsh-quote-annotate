@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.0.1';
+    const VERSION = '1.0.2';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -459,6 +459,7 @@ window.__ModuleLoader__.load({
         quote: String(payload.text || '').slice(0, MAX_QUOTE_CHARS),
         comment: '',
         rowKey: payload.rowKey || '',
+        rowRight: payload.rowEl ? Math.round(payload.rowEl.getBoundingClientRect().right) : 0,
         turn: payload.turn || '',
         kind: payload.kind || '',
         label: roleLabel(payload.kind, payload.turn),
@@ -939,13 +940,15 @@ window.__ModuleLoader__.load({
           const range = annotation ? locateAnnotation(annotation) : null;
           const el = range ? elementOf(range.startContainer) : null;
           const row = el ? el.closest(ROW_SELECTOR) : null;
-          if (row) {
-            const rowRect = row.getBoundingClientRect();
-            const besideLeft = rowRect.right + 16;
+          const rowRect = row ? row.getBoundingClientRect() : null;
+          const rowRight = rowRect ? rowRect.right : annotation && annotation.rowRight ? annotation.rowRight : 0;
+          const topBase = rowRect ? rowRect.top : rect.top || 0;
+          if (rowRight > 0) {
+            const besideLeft = rowRight + 16;
             if (besideLeft + width <= window.innerWidth - 12) {
               beside = {
                 left: besideLeft,
-                top: Math.min(Math.max(12, rowRect.top), Math.max(12, window.innerHeight - 240)),
+                top: Math.min(Math.max(12, topBase), Math.max(12, window.innerHeight - 240)),
               };
             }
           }
@@ -1386,7 +1389,7 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'dqa-row-head', style: { padding: '0 4px' } },
-              h('span', null, tr('trayTitle', { n: items.length })),
+              h('span', null, tr('trayTitle', { n: items.length }) + ' · v' + VERSION),
               h('span', { className: 'dqa-row-quote' }, tr('trayHint'))
             ),
             rows,
@@ -1463,6 +1466,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       if (applied) return;
       applied = true;
+      if (window.console) window.console.log('[quote-annotate] client loaded v' + VERSION);
 
       locale = typeof ctx.get === 'function' ? ctx.get('locale') : null;
       refreshLocale();
