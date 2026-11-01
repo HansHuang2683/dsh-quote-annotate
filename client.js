@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.1.1';
+    const VERSION = '1.1.2';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -684,7 +684,6 @@ window.__ModuleLoader__.load({
       '.dqa-pop textarea{display:block;width:100%;box-sizing:border-box;min-height:64px;max-height:180px;resize:vertical;',
       'padding:7px 9px;border-radius:8px;border:1px solid var(--dqa-border);background:var(--dqa-input);',
       'color:var(--dqa-text);font:inherit;outline:none}',
-      '.dqa-pop textarea::placeholder{color:var(--dqa-text-2)}',
       '.dqa-pop textarea:focus{border-color:var(--dqa-accent)}',
       '.dqa-pop-actions{display:flex;align-items:center;gap:8px;margin-top:8px}',
       '.dqa-pop-trash{margin-right:auto;border:none;background:transparent;cursor:pointer;padding:4px;border-radius:6px;',
@@ -1035,7 +1034,6 @@ window.__ModuleLoader__.load({
             { key: 'pop', className: 'dqa-pop', 'data-dqa': 'popover', style: { left: left + 'px', top: top + 'px' } },
             h('textarea', {
               autoFocus: true,
-              placeholder: tr('placeholder'),
               value: editor.comment,
               onChange: (event) => setEditor(Object.assign({}, editor, { comment: event.target.value })),
               onKeyDown: (event) => {
