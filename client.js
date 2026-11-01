@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.1.2';
+    const VERSION = '1.1.3';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -243,30 +243,41 @@ window.__ModuleLoader__.load({
      * 文案
      * ================================================================== */
     function refreshLocale() {
-      let id = '';
+      const candidates = [];
+      const push = (value) => {
+        if (typeof value === 'string' && value) candidates.push(value.toLowerCase());
+      };
       try {
-        if (typeof document !== 'undefined' && document.documentElement && document.documentElement.lang) {
-          id = String(document.documentElement.lang);
+        push(document.documentElement && document.documentElement.lang);
+      } catch (error) {
+        /* 忽略 */
+      }
+      try {
+        push(typeof navigator !== 'undefined' ? navigator.language : '');
+        const languages = typeof navigator !== 'undefined' ? navigator.languages : null;
+        if (languages && languages.length) for (let i = 0; i < languages.length; i++) push(languages[i]);
+      } catch (error) {
+        /* 忽略 */
+      }
+      try {
+        const snapshot = locale && typeof locale.getLocale === 'function' ? locale.getLocale() : null;
+        if (snapshot) {
+          push(snapshot.active);
+          if (snapshot.locales && snapshot.locales.length) {
+            for (let i = 0; i < snapshot.locales.length; i++) push(snapshot.locales[i] && snapshot.locales[i].id);
+          }
         }
       } catch (error) {
-        id = '';
+        /* 忽略 */
       }
-      if (!id) {
-        try {
-          const snapshot = locale && typeof locale.getLocale === 'function' ? locale.getLocale() : null;
-          if (snapshot && typeof snapshot.active === 'string') id = snapshot.active;
-        } catch (error) {
-          id = '';
+      let isZh = false;
+      for (let i = 0; i < candidates.length; i++) {
+        if (candidates[i].indexOf('zh') === 0) {
+          isZh = true;
+          break;
         }
       }
-      if (!id) {
-        try {
-          id = (typeof navigator !== 'undefined' && navigator.language) || '';
-        } catch (error) {
-          id = '';
-        }
-      }
-      activeLocale = String(id).toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en';
+      activeLocale = isZh ? 'zh' : 'en';
     }
 
     function tr(key, params) {
