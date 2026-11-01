@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.0.4';
+    const VERSION = '1.1.0';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -66,10 +66,16 @@ window.__ModuleLoader__.load({
         roleContext: '对话上下文',
         turnLabel: '第 {n} 轮',
         truncated: '……（引用过长，已截断）',
-        sentHeader: '【我的批注】',
-        sentQuote: '原文：',
-        sentComment: '批注：',
-        sentPrefix: '批注 {n}｜{label}',
+        sentMark: '✎',
+        sentQuoteOpen: '「',
+        sentQuoteClose: '」',
+        sentArrow: '→ ',
+        shortUser: '我',
+        shortAssistant: 'AI',
+        shortTool: '工具',
+        shortSteering: '补充',
+        shortCommand: '命令',
+        shortContext: '上文',
       },
       en: {
         annotate: 'Annotate',
@@ -99,10 +105,16 @@ window.__ModuleLoader__.load({
         roleContext: 'Conversation',
         turnLabel: 'turn {n}',
         truncated: '…(quote truncated)',
-        sentHeader: '[My annotations]',
-        sentQuote: 'quote: ',
-        sentComment: 'annotation: ',
-        sentPrefix: 'annotation {n} | {label}',
+        sentMark: '✎',
+        sentQuoteOpen: '"',
+        sentQuoteClose: '"',
+        sentArrow: '→ ',
+        shortUser: 'me',
+        shortAssistant: 'AI',
+        shortTool: 'tool',
+        shortSteering: 'note',
+        shortCommand: 'cmd',
+        shortContext: 'ctx',
       },
     };
 
@@ -513,25 +525,46 @@ window.__ModuleLoader__.load({
     /* ================================================================== *
      * 发送时折叠成正文
      * ================================================================== */
+    const CIRCLED = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+
+    /** 极简出处：我 / AI / 工具 / 补充 / 命令 / 上文，外加 · 轮次 */
+    function shortSource(item) {
+      let base;
+      if (item.kind === 'user') base = tr('shortUser');
+      else if (item.kind === 'assistant-step') base = tr('shortAssistant');
+      else if (item.kind === 'tool-call') base = tr('shortTool');
+      else if (item.kind === 'steering') base = tr('shortSteering');
+      else if (item.kind === 'command' || item.kind === 'command-input') base = tr('shortCommand');
+      else base = tr('shortContext');
+      return item.turn ? base + '·' + item.turn : base;
+    }
+
+    /**
+     * 一行一条，尽量短：
+     *   ✎①AI·25「原文摘要」→ 我的批注
+     * 空批注只保留 ✎①AI·25「原文摘要」。
+     */
     function buildAnnotationBlock(items) {
-      const chunks = [];
+      const lines = [];
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        let quote = String(item.quote || '').replace(/\r\n?/g, '\n').trim();
-        if (quote.length > MAX_SENT_QUOTE_CHARS) quote = quote.slice(0, MAX_SENT_QUOTE_CHARS) + '…';
-        const quoteLines = quote.split('\n').map((line) => '  ' + line).join('\n');
-        chunks.push(
-          tr('sentPrefix', { n: item.n, label: item.label }) +
-            '\n' +
-            tr('sentQuote') +
-            '\n' +
-            quoteLines +
-            '\n' +
-            tr('sentComment') +
-            (item.comment && item.comment.trim() ? item.comment.trim() : tr('emptyComment'))
+        const mark = item.n <= CIRCLED.length ? CIRCLED[item.n - 1] : '(' + item.n + ')';
+        let quote = String(item.quote || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (quote.length > 90) quote = quote.slice(0, 90) + '…';
+        const comment = item.comment && item.comment.trim() ? item.comment.trim() : '';
+        lines.push(
+          tr('sentMark') +
+            mark +
+            shortSource(item) +
+            tr('sentQuoteOpen') +
+            quote +
+            tr('sentQuoteClose') +
+            (comment ? tr('sentArrow') + comment : '')
         );
       }
-      return tr('sentHeader') + '\n\n' + chunks.join('\n\n');
+      return lines.join('\n');
     }
 
     function composeSentText(draft, items) {
@@ -648,9 +681,8 @@ window.__ModuleLoader__.load({
       'padding:10px;border:1px solid var(--dqa-border);border-radius:12px;background:var(--dqa-surface);',
       'box-shadow:var(--dqa-shadow);color:var(--dqa-text);animation:dqa-in .12s ease;',
       'font:400 13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}',
-      '.dqa-pop-quote{max-height:54px;overflow:auto;margin-bottom:8px;padding:6px 8px;border-radius:8px;',
-      'background:var(--dqa-surface-2);color:var(--dqa-text-2);font-size:12px;white-space:pre-wrap;',
-      'word-break:break-word;border-left:3px solid var(--dqa-accent)}',
+      '.dqa-pop-quote{margin-bottom:6px;padding:0 2px;color:var(--dqa-text-2);font-size:12px;',
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.dqa-pop textarea{display:block;width:100%;box-sizing:border-box;min-height:64px;max-height:180px;resize:vertical;',
       'padding:7px 9px;border-radius:8px;border:1px solid var(--dqa-border);background:var(--dqa-input);',
       'color:var(--dqa-text);font:inherit;outline:none}',
@@ -1003,7 +1035,7 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { key: 'pop', className: 'dqa-pop', 'data-dqa': 'popover', style: { left: left + 'px', top: top + 'px' } },
-            h('div', { className: 'dqa-pop-quote' }, annotation ? annotation.quote : editor.quote || ''),
+            h('div', { className: 'dqa-pop-quote' }, '「' + String((annotation ? annotation.quote : editor.quote) || '').replace(/\s+/g, ' ').slice(0, 80) + '」'),
             h('textarea', {
               autoFocus: true,
               placeholder: tr('placeholder'),
@@ -1082,8 +1114,8 @@ window.__ModuleLoader__.load({
       'background:transparent;color:var(--dqa-text);cursor:pointer;font:400 12px/1 -apple-system,',
       'BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;text-align:left;padding:0}',
       '.dqa-strip-main:hover .dqa-strip-title{opacity:.85}',
-      '.dqa-strip-insert{flex:none;height:20px;padding:0 8px;border-radius:6px;border:1px solid var(--dqa-border);',
-      'background:transparent;color:var(--dqa-text-2);cursor:pointer;font:500 11px/1 inherit}',
+      '.dqa-strip-insert{flex:none;width:22px;height:20px;padding:0;border-radius:6px;border:none;',
+      'background:transparent;color:var(--dqa-text-2);cursor:pointer;font:500 12px/1 inherit}',
       '.dqa-strip-insert:hover{color:var(--dqa-text);background:var(--dqa-surface-3)}',
       '.dqa-strip-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;',
       'padding:0 5px;border-radius:9px;background:var(--dqa-accent-fill);color:var(--dqa-on-accent);',
@@ -1094,7 +1126,9 @@ window.__ModuleLoader__.load({
       '.dqa-strip-chevron{flex:none;color:var(--dqa-text-2);font-size:10px}',
       '.dqa-panel{border:1px solid var(--dqa-border);border-radius:12px;background:var(--dqa-surface);',
       'padding:8px;display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:auto;animation:dqa-in2 .12s ease}',
-      '.dqa-row{display:flex;align-items:flex-start;gap:8px;padding:6px 7px;border-radius:8px;background:var(--dqa-surface-2)}',
+      '.dqa-row{display:flex;align-items:flex-start;gap:8px;padding:5px 4px;border-bottom:1px solid var(--dqa-border)}',
+      '.dqa-row:last-of-type{border-bottom:none}',
+      '.dqa-row-src{flex:none;color:var(--dqa-text-2);font-size:11px;opacity:.85}',
       '.dqa-row-n{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;',
       'margin-top:1px;padding:0 5px;border-radius:9px;background:var(--dqa-accent-fill);color:var(--dqa-on-accent);',
       'font-size:11px;font-weight:600}',
@@ -1373,14 +1407,12 @@ window.__ModuleLoader__.load({
                 h(
                   'div',
                   { className: 'dqa-row-head' },
-                  h('span', null, item.label || tr('roleContext')),
+                  h('span', { className: 'dqa-row-src' }, shortSource(item)),
                   h('span', { className: 'dqa-row-quote' }, '「' + String(item.quote || '').split('\n')[0] + '」')
                 ),
-                h(
-                  'div',
-                  { className: 'dqa-row-comment' },
-                  item.comment && item.comment.trim() ? item.comment : tr('emptyComment')
-                )
+                item.comment && item.comment.trim()
+                  ? h('div', { className: 'dqa-row-comment' }, item.comment)
+                  : null
               ),
               h(
                 'div',
@@ -1443,8 +1475,8 @@ window.__ModuleLoader__.load({
             h(
               'div',
               { className: 'dqa-row-head', style: { padding: '0 4px' } },
-              h('span', null, tr('trayTitle', { n: items.length }) + ' · v' + VERSION),
-              h('span', { className: 'dqa-row-quote' }, tr('trayHint'))
+              h('span', null, tr('trayTitle', { n: items.length })),
+              h('span', { className: 'dqa-row-quote' })
             ),
             rows,
             h(
@@ -1457,13 +1489,12 @@ window.__ModuleLoader__.load({
 
       const strip = h(
         'div',
-        { className: 'dqa-strip', 'data-dqa': 'strip' },
+        { className: 'dqa-strip', 'data-dqa': 'strip', title: 'v' + VERSION + ' · ' + tr('pillHint') },
         h(
           'button',
           { type: 'button', className: 'dqa-strip-main', onClick: () => setExpanded((value) => !value) },
           h('span', { className: 'dqa-strip-count' }, String(items.length)),
           h('span', { className: 'dqa-strip-title' }, tr('pillOne')),
-          h('span', { className: 'dqa-strip-hint' }, tr('pillHint')),
           h('span', { className: 'dqa-strip-chevron' }, expanded ? '▾' : '▸')
         ),
         h(
@@ -1477,7 +1508,7 @@ window.__ModuleLoader__.load({
               insertIntoDraft();
             },
           },
-          tr('insert')
+          '⇩'
         )
       );
 
