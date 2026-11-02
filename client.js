@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.1.3';
+    const VERSION = '1.1.4';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -1114,12 +1114,16 @@ window.__ModuleLoader__.load({
       '@keyframes dqa-in2{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}',
       '.dqa-stripwrap{position:fixed;z-index:2147483001;pointer-events:auto;user-select:none;display:flex;flex-direction:column;',
       'gap:6px;box-sizing:border-box}',
-      '.dqa-strip{display:flex;align-items:center;gap:6px;width:100%;box-sizing:border-box;height:30px;',
-      'padding:0 8px 0 10px;border:1px solid var(--dqa-border);border-radius:10px;background:var(--dqa-surface-2)}',
-      '.dqa-strip-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0;height:100%;border:none;',
+      '.dqa-strip{display:flex;flex-direction:column;width:100%;box-sizing:border-box;border:1px solid var(--dqa-border);',
+      'border-radius:10px;background:var(--dqa-surface-2);overflow:hidden}',
+      '.dqa-strip-head{display:flex;align-items:center;gap:2px;height:28px;padding:0 4px 0 10px}',
+      '.dqa-strip-main{display:flex;align-items:center;gap:7px;flex:1;min-width:0;height:100%;border:none;',
       'background:transparent;color:var(--dqa-text);cursor:pointer;font:400 12px/1 -apple-system,',
       'BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;text-align:left;padding:0}',
       '.dqa-strip-main:hover .dqa-strip-title{opacity:.85}',
+      '.dqa-strip-clear{flex:none;border:none;background:transparent;color:var(--dqa-text-2);cursor:pointer;',
+      'font:400 11px/1 inherit;padding:3px 6px;border-radius:5px}',
+      '.dqa-strip-clear:hover{color:var(--dqa-text);background:var(--dqa-surface-3)}',
       '.dqa-strip-insert{flex:none;width:22px;height:20px;padding:0;border-radius:6px;border:none;',
       'background:transparent;color:var(--dqa-text-2);cursor:pointer;font:500 12px/1 inherit}',
       '.dqa-strip-insert:hover{color:var(--dqa-text);background:var(--dqa-surface-3)}',
@@ -1130,9 +1134,9 @@ window.__ModuleLoader__.load({
       '.dqa-strip-hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;',
       'color:var(--dqa-text-2);font-size:11px}',
       '.dqa-strip-chevron{flex:none;color:var(--dqa-text-2);font-size:10px}',
-      '.dqa-panel{border:1px solid var(--dqa-border);border-radius:12px;background:var(--dqa-surface);',
-      'padding:8px;display:flex;flex-direction:column;gap:6px;max-height:230px;overflow:auto;animation:dqa-in2 .12s ease}',
-      '.dqa-row{display:flex;align-items:flex-start;gap:8px;padding:5px 4px;border-bottom:1px solid var(--dqa-border)}',
+      '.dqa-panel{border-top:1px solid var(--dqa-border);padding:0 8px;display:flex;flex-direction:column;',
+      'max-height:170px;overflow:auto;animation:dqa-in2 .12s ease}',
+      '.dqa-row{display:flex;align-items:flex-start;gap:6px;padding:4px 2px;border-bottom:1px solid var(--dqa-border)}',
       '.dqa-row:last-of-type{border-bottom:none}',
       '.dqa-row-src{flex:none;color:var(--dqa-text-2);font-size:11px;opacity:.85}',
       '.dqa-row-n{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;',
@@ -1474,28 +1478,9 @@ window.__ModuleLoader__.load({
           )
         : null;
 
-      const panel = expanded
-        ? h(
-            'div',
-            { className: 'dqa-panel', 'data-dqa': 'panel' },
-            h(
-              'div',
-              { className: 'dqa-row-head', style: { padding: '0 4px' } },
-              h('span', null, tr('trayTitle', { n: items.length })),
-              h('span', { className: 'dqa-row-quote' })
-            ),
-            rows,
-            h(
-              'div',
-              { className: 'dqa-foot' },
-              h('button', { type: 'button', className: 'dqa-link', onClick: clearAll }, tr('clear'))
-            )
-          )
-        : null;
-
-      const strip = h(
+      const head = h(
         'div',
-        { className: 'dqa-strip', 'data-dqa': 'strip', title: 'v' + VERSION + ' · ' + tr('pillHint') },
+        { className: 'dqa-strip-head' },
         h(
           'button',
           { type: 'button', className: 'dqa-strip-main', onClick: () => setExpanded((value) => !value) },
@@ -1503,6 +1488,9 @@ window.__ModuleLoader__.load({
           h('span', { className: 'dqa-strip-title' }, tr('pillOne')),
           h('span', { className: 'dqa-strip-chevron' }, expanded ? '▾' : '▸')
         ),
+        expanded
+          ? h('button', { type: 'button', className: 'dqa-strip-clear', onClick: clearAll }, tr('clear'))
+          : null,
         h(
           'button',
           {
@@ -1516,6 +1504,17 @@ window.__ModuleLoader__.load({
           },
           '⇩'
         )
+      );
+
+      const strip = h(
+        'div',
+        {
+          className: 'dqa-strip',
+          'data-dqa': 'strip',
+          title: 'v' + VERSION + ' · ' + tr('pillHint'),
+        },
+        head,
+        expanded ? h('div', { className: 'dqa-panel', 'data-dqa': 'panel' }, rows) : null
       );
 
       return h(
