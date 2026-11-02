@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
     const OWN_SELECTOR = '[data-dqa]';
     const HIGHLIGHT_NAME = 'dqa-annotation';
     /** 便于在界面上确认当前加载的是哪一版（HMR / 桌面端缓存排查用） */
-    const VERSION = '1.1.4';
+    const VERSION = '1.1.5';
     const MAX_QUOTE_CHARS = 4000;
     const MAX_SENT_QUOTE_CHARS = 1200;
     const ZWSP = '\u200b';
@@ -53,6 +53,7 @@ window.__ModuleLoader__.load({
         pillOne: '条批注',
         pillHint: '发送时会自动附在消息里',
         trayMissing: '批注已记录，但输入框未连接：请刷新页面（Ctrl+R）',
+        crash: '批注插件出错：',
         insert: '插入正文',
         insertHint: '发送时没自动带上批注？点这里把批注写进输入框',
         trayTitle: '批注 {n} 条',
@@ -92,6 +93,7 @@ window.__ModuleLoader__.load({
         pillOne: 'annotations',
         pillHint: 'attached to your next message',
         trayMissing: 'Annotations recorded, but the composer is not connected — reload the page (Ctrl+R)',
+        crash: 'Annotation UI error:',
         insert: 'Insert',
         insertHint: 'If sending did not carry the annotations, write them into the composer here',
         trayTitle: '{n} annotations',
@@ -751,6 +753,30 @@ window.__ModuleLoader__.load({
           strokeLinejoin: 'round',
         })
       );
+    }
+
+    class OverlayBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { error: error };
+      }
+      componentDidCatch(error) {
+        if (window.console) window.console.error('[quote-annotate] UI crashed', error);
+      }
+      render() {
+        if (this.state.error) {
+          const message = String((this.state.error && this.state.error.message) || '');
+          return h('div', { className: 'dqa-warn', 'data-dqa': 'warn' }, tr('crash') + ' ' + message);
+        }
+        return this.props.children;
+      }
+    }
+
+    function QuoteOverlayRoot() {
+      return h(OverlayBoundary, null, h(QuoteOverlay, null));
     }
 
     function QuoteOverlay() {
@@ -1532,7 +1558,6 @@ window.__ModuleLoader__.load({
               bottom: Math.max(8, window.innerHeight - anchor.top + STRIP_GAP) + 'px',
             },
           },
-          panel,
           strip
         )
       );
@@ -1581,7 +1606,7 @@ window.__ModuleLoader__.load({
       }
 
       ctx.slots.inject('shell.overlay', () =>
-        ctx.slots.register({ name: 'shell.overlay', id: 'quote-annotate-overlay', order: 40 }, QuoteOverlay)
+        ctx.slots.register({ name: 'shell.overlay', id: 'quote-annotate-overlay', order: 40 }, QuoteOverlayRoot)
       );
 
       ctx.slots.inject('conversation.input.overlay', () =>
